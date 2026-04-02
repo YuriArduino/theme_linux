@@ -1,0 +1,5 @@
+{
+  "name": "themectl",
+  "description": "A modern CLI tool for browsing and installing Linux desktop themes from OpenDesktop.",
+  "requestFramePermissions": []
+}

@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "themectl"
+version = "1.0.0"
+description = "A modern CLI tool for browsing and installing Linux desktop themes from OpenDesktop."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Themectl Contributors"}
+]
+dependencies = [
+    "requests>=2.31.0",
+    "rich>=13.7.0",
+    "typer>=0.9.0",
+    "textual>=0.47.0"
+]
+
+[project.scripts]
+themectl = "themectl.main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["themectl*"]
