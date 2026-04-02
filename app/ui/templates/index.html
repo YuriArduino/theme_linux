@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en" class="h-full bg-slate-950">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>themectl</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="h-full text-slate-100">
+    <div class="flex h-screen overflow-hidden">
+      <aside class="w-64 bg-slate-900/90 border-r border-slate-800 p-5">
+        <h1 class="text-2xl font-bold mb-8">themectl</h1>
+        <nav class="space-y-2 text-sm">
+          <button data-view="browse" class="nav-btn w-full text-left px-3 py-2 rounded bg-fuchsia-600">Browse</button>
+          <button data-view="trending" class="nav-btn w-full text-left px-3 py-2 rounded hover:bg-slate-800">Trending</button>
+          <button data-view="installed" class="nav-btn w-full text-left px-3 py-2 rounded hover:bg-slate-800">Installed</button>
+          <button data-view="updates" class="nav-btn w-full text-left px-3 py-2 rounded hover:bg-slate-800">Updates</button>
+        </nav>
+      </aside>
+
+      <main class="flex-1 p-6 overflow-y-auto">
+        <div class="flex gap-3 mb-6">
+          <input id="searchInput" placeholder="Search themes..." class="flex-1 px-4 py-2 rounded-lg bg-slate-900 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" />
+          <button id="searchBtn" class="px-4 py-2 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500">Search</button>
+        </div>
+
+        <section id="grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4"></section>
+      </main>
+    </div>
+
+    <div id="modal" class="hidden fixed inset-0 bg-black/70 items-center justify-center p-4">
+      <div class="max-w-2xl w-full bg-slate-900 rounded-xl border border-slate-700 p-6">
+        <div class="flex justify-between items-start mb-4">
+          <h2 id="modalTitle" class="text-xl font-semibold"></h2>
+          <button id="closeModal" class="text-slate-400">✕</button>
+        </div>
+        <img id="modalImage" class="w-full h-64 object-cover rounded-lg bg-slate-800 mb-4" alt="Theme preview" />
+        <p id="modalSummary" class="text-slate-300 text-sm mb-4"></p>
+        <div class="flex gap-3">
+          <button id="installBtn" class="px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-500">Install</button>
+          <button id="removeBtn" class="px-4 py-2 rounded bg-rose-600 hover:bg-rose-500">Remove</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
