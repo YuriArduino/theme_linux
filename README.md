@@ -1,91 +1,82 @@
 # themectl
 
-A modern command-line client for browsing, installing, and managing Linux desktop themes from the [OpenDesktop / Pling OCS API](https://www.opendesktop.org/).
+`themectl` is a modern Linux theme manager for browsing, previewing, installing, and managing themes from the OpenDesktop / Pling OCS API.
 
-## Features
+> API endpoint: `https://api.opendesktop.org/ocs/v1/content/data`
 
-- **Search**: Find themes by name or category.
-- **Top Rated**: Browse the highest-rated themes.
-- **Trending**: See what's currently popular.
-- **Preview**: View theme details and screenshots in your terminal.
-- **Install**: One-click installation to `~/.themes/`.
-- **Interactive Mode**: A terminal UI for a better browsing experience.
+## What's new in v2
+
+- Migrated from terminal-first UX to a local web application (FastAPI + TailwindCSS).
+- Introduced modular architecture designed for long-term maintainability.
+- Added API response caching to reduce duplicate network calls.
+- Added install-state tracking for installed themes and update checks.
+
+## Architecture
+
+```text
+app/
+  api/        # OCS API client and response parsing
+  services/   # Theme workflows (browse/search/install/remove/update checks)
+  models/     # Domain model(s) used across layers
+  ui/         # FastAPI routes, templates, static assets
+  utils/      # Shared config and caching utilities
+main.py       # Local launcher: python main.py
+```
+
+### Module responsibilities
+
+- `app/api/ocs_client.py`: Handles all HTTP communication with OpenDesktop OCS endpoints.
+- `app/services/theme_service.py`: Orchestrates browse/search/details/install/remove/update operations.
+- `app/services/installer_service.py`: Downloads archives, extracts theme folders to `~/.themes`, persists install metadata.
+- `app/models/theme.py`: Normalizes OCS payloads into a stable `Theme` model.
+- `app/ui/routes.py`: REST API + HTML route for local browser UI.
+- `app/ui/templates/index.html`: Tailwind-based desktop-style layout.
+- `app/ui/static/app.js`: Client-side interactions for navigation, search, detail modal, install/remove/update actions.
+- `app/utils/cache.py`: File cache with TTL to avoid repeated API calls.
+- `app/utils/config.py`: Central app settings and filesystem paths.
 
 ## Installation
 
 ### Prerequisites
 
-- Python 3.11 or higher.
+- Python 3.11+
 
-### From Source
-
-```bash
-git clone https://github.com/yourusername/themectl.git
-cd themectl
-pip install .
-```
-
-### Using pipx (Recommended)
+### Install dependencies
 
 ```bash
-pipx install .
+pip install -r requirements.txt
 ```
 
-## Usage
+## Run
 
-### Commands
+```bash
+python main.py
+```
 
-- **Search themes**:
-  ```bash
-  themectl search gtk catppuccin
-  ```
+Open in your browser:
 
-- **Show top rated themes**:
-  ```bash
-  themectl top
-  ```
+```text
+http://localhost:8000
+```
 
-- **Show trending themes**:
-  ```bash
-  themectl trending
-  ```
+## UI features
 
-- **Preview a theme**:
-  ```bash
-  themectl preview <id>
-  ```
+- Sidebar navigation (Browse / Trending / Installed / Updates)
+- Search bar and search results grid
+- Theme cards with preview image, rating, and download count
+- Theme details modal
+- Install and remove actions
+- Installed themes section
+- Update detection for installed themes
 
-- **Install a theme**:
-  ```bash
-  themectl install <id>
-  ```
+## Notes on caching and performance
 
-- **List installed themes**:
-  ```bash
-  themectl list
-  ```
+- API responses are cached in `~/.cache/themectl` with TTL-based expiration.
+- Cache keys are deterministic and parameter-based to prevent redundant requests.
+- Repeated browse/search/detail requests within TTL avoid remote calls.
 
-- **Remove a theme**:
-  ```bash
-  themectl remove <theme_name>
-  ```
+## Development tips
 
-- **Interactive Browser**:
-  ```bash
-  themectl browse
-  ```
-
-## Architecture
-
-`themectl` is built with a modular architecture:
-
-- `api.py`: Handles all communication with the OCS API.
-- `installer.py`: Manages downloading, extracting, and installing themes.
-- `preview.py`: Formats and displays theme information using `rich`.
-- `cli.py`: Defines the command-line interface using `typer`.
-- `tui.py`: Provides the interactive terminal UI using `textual`.
-- `utils.py`: Contains shared utilities for caching and configuration.
-
-## License
-
-MIT
+- Keep domain logic in `services/` and `api/`; keep route handlers thin.
+- Avoid business logic in templates or JavaScript when possible.
+- Keep model normalization in `models/` to shield UI from API shape changes.
