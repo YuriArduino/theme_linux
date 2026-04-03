@@ -82,29 +82,53 @@ class OCSClient:
             return [item for item in content if isinstance(item, dict)]
         return []
 
-    def search(self, query: str, category: str = "gtk") -> list[Theme]:
-        params: dict[str, Any] = {"search": query}
+    def search(
+        self,
+        query: str,
+        category: str = "gtk",
+        page: int = 1,
+        page_size: int = 24,
+    ) -> list[Theme]:
+        params: dict[str, Any] = {"search": query, "page": page, "pagesize": page_size}
         normalized_category = self._normalize_category(category)
         if normalized_category:
             params["categories"] = normalized_category
         content = self._parse_content(self._get("/content/data", params))
-        return [Theme.from_ocs(item) for item in content]
+        themes = [Theme.from_ocs(item) for item in content]
+        print(
+            f"[themectl][OCSClient.search] raw={len(content)} parsed={len(themes)} query={query!r}"
+        )
+        return themes
 
-    def top(self, category: str = "all") -> list[Theme]:
-        params: dict[str, Any] = {"sort": "rating"}
+    def top(
+        self,
+        category: str = "all",
+        page: int = 1,
+        page_size: int = 24,
+    ) -> list[Theme]:
+        params: dict[str, Any] = {"sort": "rating", "page": page, "pagesize": page_size}
         normalized_category = self._normalize_category(category)
         if normalized_category:
             params["categories"] = normalized_category
         content = self._parse_content(self._get("/content/data", params))
-        return [Theme.from_ocs(item) for item in content]
+        themes = [Theme.from_ocs(item) for item in content]
+        print(f"[themectl][OCSClient.top] raw={len(content)} parsed={len(themes)}")
+        return themes
 
-    def trending(self, category: str = "all") -> list[Theme]:
-        params: dict[str, Any] = {"sort": "new"}
+    def trending(
+        self,
+        category: str = "all",
+        page: int = 1,
+        page_size: int = 24,
+    ) -> list[Theme]:
+        params: dict[str, Any] = {"sort": "new", "page": page, "pagesize": page_size}
         normalized_category = self._normalize_category(category)
         if normalized_category:
             params["categories"] = normalized_category
         content = self._parse_content(self._get("/content/data", params))
-        return [Theme.from_ocs(item) for item in content]
+        themes = [Theme.from_ocs(item) for item in content]
+        print(f"[themectl][OCSClient.trending] raw={len(content)} parsed={len(themes)}")
+        return themes
 
     def details(self, content_id: str) -> Theme | None:
         content = self._parse_content(self._get(f"/content/data/{content_id}", {}))
