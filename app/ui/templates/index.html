@@ -24,6 +24,15 @@
           <button id="searchBtn" class="px-4 py-2 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500">Search</button>
         </div>
 
+        <div class="flex items-center justify-between gap-4 mb-4">
+          <p id="statusText" class="text-sm text-slate-400">Loading themes...</p>
+          <div id="pagination" class="hidden items-center gap-2">
+            <button id="prevPageBtn" class="px-3 py-1 rounded bg-slate-800 text-sm disabled:opacity-50 disabled:cursor-not-allowed">Previous</button>
+            <span id="pageIndicator" class="text-sm text-slate-400"></span>
+            <button id="nextPageBtn" class="px-3 py-1 rounded bg-slate-800 text-sm disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
+          </div>
+        </div>
+
         <section id="grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4"></section>
       </main>
     </div>
@@ -34,10 +43,16 @@
           <h2 id="modalTitle" class="text-xl font-semibold"></h2>
           <button id="closeModal" class="text-slate-400">✕</button>
         </div>
-        <img id="modalImage" class="w-full h-64 object-cover rounded-lg bg-slate-800 mb-4" alt="Theme preview" />
+        <div class="relative mb-4">
+          <img id="modalImage" class="w-full h-64 object-cover rounded-lg bg-slate-800" alt="Theme preview" />
+          <button id="carouselPrevBtn" class="hidden absolute left-3 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-slate-950/80 text-lg">‹</button>
+          <button id="carouselNextBtn" class="hidden absolute right-3 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-slate-950/80 text-lg">›</button>
+        </div>
+        <div id="carouselThumbs" class="hidden gap-2 mb-4 overflow-x-auto"></div>
         <p id="modalSummary" class="text-slate-300 text-sm mb-4"></p>
-        <div class="flex gap-3">
-          <button id="installBtn" class="px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-500">Install</button>
+        <p id="installStatus" class="text-sm text-slate-400 mb-4"></p>
+        <div class="flex gap-3 items-center">
+          <button id="installBtn" class="px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed">Install</button>
           <button id="removeBtn" class="px-4 py-2 rounded bg-rose-600 hover:bg-rose-500">Remove</button>
         </div>
       </div>

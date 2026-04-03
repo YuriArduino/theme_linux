@@ -23,14 +23,31 @@ def index(request: Request):
 
 
 @router.get("/api/themes")
-def themes(sort: str = Query(default="top", pattern="^(top|trending)$")):
-    data = service.browse(sort)
-    return [theme.__dict__ for theme in data]
+def themes(
+    sort: str = Query(default="top", pattern="^(top|trending)$"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=24, ge=1, le=60),
+):
+    data = service.browse(sort, page=page, page_size=page_size)
+    items = [theme.to_dict() for theme in data["items"]]
+    print(
+        f"[themectl][routes:/api/themes] sort={sort} page={page} page_size={page_size} items={len(items)}"
+    )
+    return {**data["pagination"], "items": items}
 
 
 @router.get("/api/themes/search")
-def search(query: str = Query(min_length=2)):
-    return [theme.__dict__ for theme in service.search(query)]
+def search(
+    query: str = Query(min_length=2),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=24, ge=1, le=60),
+):
+    data = service.search(query, page=page, page_size=page_size)
+    items = [theme.to_dict() for theme in data["items"]]
+    print(
+        f"[themectl][routes:/api/themes/search] query={query!r} page={page} page_size={page_size} items={len(items)}"
+    )
+    return {**data["pagination"], "items": items}
 
 
 @router.get("/api/themes/{content_id}")
@@ -38,7 +55,8 @@ def details(content_id: str):
     theme = service.details(content_id)
     if not theme:
         raise HTTPException(status_code=404, detail="Theme not found")
-    return theme.__dict__
+    print(f"[themectl][routes:/api/themes/{{content_id}}] id={content_id} found=True")
+    return theme.to_dict()
 
 
 @router.get("/api/installed")

@@ -13,13 +13,22 @@ class ThemeService:
         self.client = OCSClient()
         self.installer = InstallerService()
 
-    def browse(self, sort: str = "top"):
+    def browse(self, sort: str = "top", page: int = 1, page_size: int = 24):
         if sort == "trending":
-            return self.client.trending()
-        return self.client.top()
+            result = self.client.trending_page(page=page, page_size=page_size)
+        else:
+            result = self.client.top_page(page=page, page_size=page_size)
+        print(
+            f"[themectl][ThemeService.browse] sort={sort} page={page} page_size={page_size} parsed={len(result['items'])}"
+        )
+        return result
 
-    def search(self, query: str):
-        return self.client.search(query)
+    def search(self, query: str, page: int = 1, page_size: int = 24):
+        result = self.client.search_page(query, page=page, page_size=page_size)
+        print(
+            f"[themectl][ThemeService.search] query={query!r} page={page} page_size={page_size} parsed={len(result['items'])}"
+        )
+        return result
 
     def details(self, content_id: str):
         return self.client.details(content_id)

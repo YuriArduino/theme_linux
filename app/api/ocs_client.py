@@ -67,7 +67,9 @@ class OCSClient:
 
     @staticmethod
     def _parse_content(payload: dict[str, Any]) -> list[dict[str, Any]]:
-        data = payload.get("ocs", {}).get("data", [])
+        data = payload.get("ocs", {}).get("data")
+        if data is None:
+            data = payload.get("data", payload)
 
         if isinstance(data, list):
             return [item for item in data if isinstance(item, dict)]
@@ -82,6 +84,53 @@ class OCSClient:
             return [item for item in content if isinstance(item, dict)]
         return []
 
+    @staticmethod
+    def _pagination(payload: dict[str, Any], page: int, page_size: int) -> dict[str, int | bool]:
+        total_items = Theme._as_int(
+            payload.get("totalitems")
+            or payload.get("ocs", {}).get("meta", {}).get("totalitems"),
+            0,
+        )
+        items_per_page = Theme._as_int(
+            payload.get("itemsperpage")
+            or payload.get("ocs", {}).get("meta", {}).get("itemsperpage"),
+            page_size,
+        )
+        return {
+            "page": page,
+            "page_size": items_per_page or page_size,
+            "total_items": total_items,
+            "has_more": total_items > page * (items_per_page or page_size),
+        }
+
+    def _list(
+        self,
+        *,
+        sort: str | None = None,
+        query: str | None = None,
+        category: str = "all",
+        page: int = 1,
+        page_size: int = 24,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {"page": page, "pagesize": page_size}
+        if sort:
+            params["sort"] = sort
+        if query:
+            params["search"] = query
+
+        normalized_category = self._normalize_category(category)
+        if normalized_category:
+            params["categories"] = normalized_category
+
+        payload = self._get("/content/data", params)
+        content = self._parse_content(payload)
+        themes = [Theme.from_ocs(item) for item in content]
+        return {
+            "items": themes,
+            "pagination": self._pagination(payload, page, page_size),
+            "raw_count": len(content),
+        }
+
     def search(
         self,
         query: str,
@@ -89,16 +138,35 @@ class OCSClient:
         page: int = 1,
         page_size: int = 24,
     ) -> list[Theme]:
-        params: dict[str, Any] = {"search": query, "page": page, "pagesize": page_size}
-        normalized_category = self._normalize_category(category)
-        if normalized_category:
-            params["categories"] = normalized_category
-        content = self._parse_content(self._get("/content/data", params))
-        themes = [Theme.from_ocs(item) for item in content]
+        result = self._list(
+            query=query,
+            category=category,
+            page=page,
+            page_size=page_size,
+        )
+        themes = result["items"]
         print(
-            f"[themectl][OCSClient.search] raw={len(content)} parsed={len(themes)} query={query!r}"
+            f"[themectl][OCSClient.search] raw={result['raw_count']} parsed={len(themes)} query={query!r}"
         )
         return themes
+
+    def search_page(
+        self,
+        query: str,
+        category: str = "gtk",
+        page: int = 1,
+        page_size: int = 24,
+    ) -> dict[str, Any]:
+        result = self._list(
+            query=query,
+            category=category,
+            page=page,
+            page_size=page_size,
+        )
+        print(
+            f"[themectl][OCSClient.search] raw={result['raw_count']} parsed={len(result['items'])} query={query!r}"
+        )
+        return result
 
     def top(
         self,
@@ -106,14 +174,24 @@ class OCSClient:
         page: int = 1,
         page_size: int = 24,
     ) -> list[Theme]:
-        params: dict[str, Any] = {"sort": "rating", "page": page, "pagesize": page_size}
-        normalized_category = self._normalize_category(category)
-        if normalized_category:
-            params["categories"] = normalized_category
-        content = self._parse_content(self._get("/content/data", params))
-        themes = [Theme.from_ocs(item) for item in content]
-        print(f"[themectl][OCSClient.top] raw={len(content)} parsed={len(themes)}")
+        result = self.top_page(category=category, page=page, page_size=page_size)
+        themes = result["items"]
         return themes
+
+    def top_page(
+        self,
+        category: str = "all",
+        page: int = 1,
+        page_size: int = 24,
+    ) -> dict[str, Any]:
+        result = self._list(
+            sort="rating",
+            category=category,
+            page=page,
+            page_size=page_size,
+        )
+        print(f"[themectl][OCSClient.top] raw={result['raw_count']} parsed={len(result['items'])}")
+        return result
 
     def trending(
         self,
@@ -121,14 +199,26 @@ class OCSClient:
         page: int = 1,
         page_size: int = 24,
     ) -> list[Theme]:
-        params: dict[str, Any] = {"sort": "new", "page": page, "pagesize": page_size}
-        normalized_category = self._normalize_category(category)
-        if normalized_category:
-            params["categories"] = normalized_category
-        content = self._parse_content(self._get("/content/data", params))
-        themes = [Theme.from_ocs(item) for item in content]
-        print(f"[themectl][OCSClient.trending] raw={len(content)} parsed={len(themes)}")
+        result = self.trending_page(category=category, page=page, page_size=page_size)
+        themes = result["items"]
         return themes
+
+    def trending_page(
+        self,
+        category: str = "all",
+        page: int = 1,
+        page_size: int = 24,
+    ) -> dict[str, Any]:
+        result = self._list(
+            sort="new",
+            category=category,
+            page=page,
+            page_size=page_size,
+        )
+        print(
+            f"[themectl][OCSClient.trending] raw={result['raw_count']} parsed={len(result['items'])}"
+        )
+        return result
 
     def details(self, content_id: str) -> Theme | None:
         content = self._parse_content(self._get(f"/content/data/{content_id}", {}))
