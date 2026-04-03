@@ -99,6 +99,25 @@ class OCSClient:
             "has_more": total_items > page * (items_per_page or page_size),
         }
 
+    @staticmethod
+    def _parse_categories(payload: dict[str, Any]) -> list[dict[str, str]]:
+        items = OCSClient._parse_content(payload)
+        categories: list[dict[str, str]] = []
+        for item in items:
+            category_id = str(item.get("id", "")).strip()
+            name = str(item.get("display_name") or item.get("name") or "").strip()
+            if not category_id or not name:
+                continue
+            categories.append(
+                {
+                    "id": category_id,
+                    "name": name,
+                    "parent_id": str(item.get("parent_id", "")).strip(),
+                    "xdg_type": str(item.get("xdg_type", "")).strip(),
+                }
+            )
+        return categories
+
     def _list(
         self,
         *,
@@ -219,3 +238,9 @@ class OCSClient:
     def details(self, content_id: str) -> Theme | None:
         content = self._parse_content(self._get(f"/content/data/{content_id}", {}))
         return Theme.from_ocs(content[0]) if content else None
+
+    def categories(self) -> list[dict[str, str]]:
+        payload = self._get("/content/categories", {})
+        categories = self._parse_categories(payload)
+        print(f"[themectl][OCSClient.categories] parsed={len(categories)}")
+        return categories

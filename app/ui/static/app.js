@@ -6,6 +6,9 @@ const pagination = document.getElementById('pagination');
 const prevPageBtn = document.getElementById('prevPageBtn');
 const nextPageBtn = document.getElementById('nextPageBtn');
 const pageIndicator = document.getElementById('pageIndicator');
+const categoryExplorer = document.getElementById('categoryExplorer');
+const categoryFilterInput = document.getElementById('categoryFilterInput');
+const clearCategoryBtn = document.getElementById('clearCategoryBtn');
 const installBtn = document.getElementById('installBtn');
 const installStatus = document.getElementById('installStatus');
 const modalImage = document.getElementById('modalImage');
@@ -18,6 +21,8 @@ let installInFlight = false;
 let currentPage = 1;
 let currentView = 'browse';
 let currentQuery = '';
+let categories = [];
+let selectedCategoryId = '';
 
 const PAGE_SIZE = 12;
 
@@ -37,6 +42,109 @@ function getPreviewUrls(theme) {
 
 function setStatus(message) {
   statusText.textContent = message;
+}
+
+function getSelectedCategoryName() {
+  if (!selectedCategoryId) return 'All categories';
+  return categories.find((category) => category.id === selectedCategoryId)?.name || 'Selected category';
+}
+
+function buildThemeEndpoint(path, extraParams = {}) {
+  const params = new URLSearchParams();
+  Object.entries(extraParams).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      params.set(key, String(value));
+    }
+  });
+  if (selectedCategoryId) {
+    params.set('category', selectedCategoryId);
+  }
+  const query = params.toString();
+  return query ? `${path}?${query}` : path;
+}
+
+function groupCategories(items) {
+  const byParent = new Map();
+  items.forEach((item) => {
+    const parentId = item.parent_id || '';
+    const siblings = byParent.get(parentId) || [];
+    siblings.push(item);
+    byParent.set(parentId, siblings);
+  });
+  byParent.forEach((siblings) => siblings.sort((a, b) => a.name.localeCompare(b.name)));
+  return byParent;
+}
+
+function renderCategoryExplorer() {
+  if (!categoryExplorer) return;
+
+  if (!categories.length) {
+    categoryExplorer.innerHTML = '<p class="text-xs text-slate-500">No categories available.</p>';
+    return;
+  }
+
+  const filter = categoryFilterInput.value.trim().toLowerCase();
+  const grouped = groupCategories(categories);
+  const parents = grouped.get('') || [];
+
+  const html = [];
+  html.push(`
+    <button
+      data-category-id=""
+      class="category-btn w-full text-left rounded-lg px-3 py-2 text-sm ${selectedCategoryId === '' ? 'bg-fuchsia-600 text-white' : 'text-slate-300 hover:bg-slate-800'}"
+    >
+      All categories
+    </button>
+  `);
+
+  parents.forEach((parent) => {
+    const children = grouped.get(parent.id) || [];
+    const matchingChildren = children.filter((child) => child.name.toLowerCase().includes(filter));
+    const parentMatches = parent.name.toLowerCase().includes(filter);
+
+    if (filter && !parentMatches && !matchingChildren.length) {
+      return;
+    }
+
+    const visibleChildren = filter ? matchingChildren : children.slice(0, 12);
+
+    html.push(`
+      <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-2">
+        <button
+          data-category-id="${parent.id}"
+          class="category-btn w-full text-left rounded-lg px-3 py-2 text-sm ${selectedCategoryId === parent.id ? 'bg-fuchsia-600 text-white' : 'text-slate-200 hover:bg-slate-800'}"
+        >
+          ${parent.name}
+        </button>
+        ${visibleChildren.length ? `
+          <div class="mt-1 space-y-1 border-l border-slate-800 pl-2">
+            ${visibleChildren.map((child) => `
+              <button
+                data-category-id="${child.id}"
+                class="category-btn w-full text-left rounded-lg px-3 py-2 text-xs ${selectedCategoryId === child.id ? 'bg-fuchsia-600 text-white' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'}"
+              >
+                ${child.name}
+              </button>
+            `).join('')}
+          </div>
+        ` : ''}
+      </div>
+    `);
+  });
+
+  categoryExplorer.innerHTML = html.join('');
+  categoryExplorer.querySelectorAll('.category-btn').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const nextCategoryId = button.dataset.categoryId || '';
+      if (nextCategoryId === selectedCategoryId) {
+        return;
+      }
+      selectedCategoryId = nextCategoryId;
+      currentPage = 1;
+      renderCategoryExplorer();
+      await loadCurrentView();
+    });
+  });
 }
 
 function renderSkeletons(count = 6) {
@@ -98,12 +206,16 @@ async function fetchJSON(url, options = {}) {
 
 async function loadBrowse(sort = 'top') {
   currentView = sort === 'trending' ? 'trending' : 'browse';
-  setStatus(`Loading ${sort} themes...`);
+  setStatus(`Loading ${sort} themes from ${getSelectedCategoryName()}...`);
   renderSkeletons(PAGE_SIZE);
-  const data = await fetchJSON(`/api/themes?sort=${sort}&page=${currentPage}&page_size=${PAGE_SIZE}`);
+  const data = await fetchJSON(buildThemeEndpoint('/api/themes', {
+    sort,
+    page: currentPage,
+    page_size: PAGE_SIZE,
+  }));
   renderCards(data.items);
   renderPaginationControls(data);
-  setStatus(`Showing ${data.items.length} themes from ${sort}.`);
+  setStatus(`Showing ${data.items.length} ${sort} themes from ${getSelectedCategoryName()}.`);
 }
 
 async function loadInstalled() {
@@ -235,12 +347,16 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
   currentView = 'search';
   currentQuery = query;
   currentPage = 1;
-  setStatus(`Searching for "${query}"...`);
+  setStatus(`Searching "${query}" in ${getSelectedCategoryName()}...`);
   renderSkeletons(PAGE_SIZE);
-  const data = await fetchJSON(`/api/themes/search?query=${encodeURIComponent(query)}&page=${currentPage}&page_size=${PAGE_SIZE}`);
+  const data = await fetchJSON(buildThemeEndpoint('/api/themes/search', {
+    query,
+    page: currentPage,
+    page_size: PAGE_SIZE,
+  }));
   renderCards(data.items);
   renderPaginationControls(data);
-  setStatus(`Found ${data.items.length} themes for "${query}".`);
+  setStatus(`Found ${data.items.length} themes for "${query}" in ${getSelectedCategoryName()}.`);
 });
 
 installBtn.addEventListener('click', async () => {
@@ -293,12 +409,16 @@ async function loadCurrentView() {
     return;
   }
   if (currentView === 'search') {
-    setStatus(`Searching for "${currentQuery}"...`);
+    setStatus(`Searching "${currentQuery}" in ${getSelectedCategoryName()}...`);
     renderSkeletons(PAGE_SIZE);
-    const data = await fetchJSON(`/api/themes/search?query=${encodeURIComponent(currentQuery)}&page=${currentPage}&page_size=${PAGE_SIZE}`);
+    const data = await fetchJSON(buildThemeEndpoint('/api/themes/search', {
+      query: currentQuery,
+      page: currentPage,
+      page_size: PAGE_SIZE,
+    }));
     renderCards(data.items);
     renderPaginationControls(data);
-    setStatus(`Found ${data.items.length} themes for "${currentQuery}".`);
+    setStatus(`Found ${data.items.length} themes for "${currentQuery}" in ${getSelectedCategoryName()}.`);
     return;
   }
   if (currentView === 'installed') {
@@ -306,6 +426,13 @@ async function loadCurrentView() {
     return;
   }
   await loadUpdates();
+}
+
+async function loadCategories() {
+  if (!categoryExplorer) return;
+  categoryExplorer.innerHTML = '<p class="text-xs text-slate-500">Loading categories...</p>';
+  categories = await fetchJSON('/api/categories');
+  renderCategoryExplorer();
 }
 
 document.querySelectorAll('.nav-btn').forEach((button) => {
@@ -322,4 +449,18 @@ document.querySelectorAll('.nav-btn').forEach((button) => {
   });
 });
 
-loadCurrentView();
+categoryFilterInput.addEventListener('input', () => {
+  renderCategoryExplorer();
+});
+
+clearCategoryBtn.addEventListener('click', async () => {
+  if (!selectedCategoryId) {
+    return;
+  }
+  selectedCategoryId = '';
+  currentPage = 1;
+  renderCategoryExplorer();
+  await loadCurrentView();
+});
+
+Promise.all([loadCategories(), loadCurrentView()]);

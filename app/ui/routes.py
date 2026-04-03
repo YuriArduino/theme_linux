@@ -27,11 +27,12 @@ def themes(
     sort: str = Query(default="top", pattern="^(top|trending)$"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=24, ge=1, le=60),
+    category: str | None = Query(default=None),
 ):
-    data = service.browse(sort, page=page, page_size=page_size)
+    data = service.browse(sort, page=page, page_size=page_size, category=category)
     items = [theme.to_dict() for theme in data["items"]]
     print(
-        f"[themectl][routes:/api/themes] sort={sort} page={page} page_size={page_size} items={len(items)}"
+        f"[themectl][routes:/api/themes] sort={sort} page={page} page_size={page_size} category={category!r} items={len(items)}"
     )
     return {**data["pagination"], "items": items}
 
@@ -41,13 +42,21 @@ def search(
     query: str = Query(min_length=2),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=24, ge=1, le=60),
+    category: str | None = Query(default=None),
 ):
-    data = service.search(query, page=page, page_size=page_size)
+    data = service.search(query, page=page, page_size=page_size, category=category)
     items = [theme.to_dict() for theme in data["items"]]
     print(
-        f"[themectl][routes:/api/themes/search] query={query!r} page={page} page_size={page_size} items={len(items)}"
+        f"[themectl][routes:/api/themes/search] query={query!r} page={page} page_size={page_size} category={category!r} items={len(items)}"
     )
     return {**data["pagination"], "items": items}
+
+
+@router.get("/api/categories")
+def categories():
+    items = service.categories()
+    print(f"[themectl][routes:/api/categories] items={len(items)}")
+    return items
 
 
 @router.get("/api/themes/{content_id}")
