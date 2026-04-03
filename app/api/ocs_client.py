@@ -20,98 +20,92 @@ class OCSClient:
         self.session.headers.update(
             {
                 "Accept": "application/json",
+                "OCS-APIREQUEST": "true",
                 "User-Agent": f"{Settings.APP_NAME}/{Settings.APP_VERSION}",
             }
         )
-
         self.cache = JsonCache()
 
-    def _cache_key(self, endpoint: str, query: dict[str, Any]) -> str:
-        """Generate deterministic cache key."""
-        return f"{endpoint}:{json.dumps(query, sort_keys=True)}"
+    def _cache_key(self, endpoint: str, params: dict[str, Any]) -> str:
+        return f"{endpoint}:{json.dumps(params, sort_keys=True)}"
 
-    def _get(self, endpoint: str, query: dict[str, Any]) -> dict[str, Any]:
-        """Perform HTTP GET with caching."""
-        query = {**query, "format": "json"}
+    @staticmethod
+    def _normalize_category(category: str | None) -> str | None:
+        """Normalize category input for OCS queries."""
+        if not category:
+            return None
 
-        cache_key = self._cache_key(endpoint, query)
-        cached = self.cache.get(cache_key)
+        normalized = category.strip().lower()
+        if normalized in {"all", "*"}:
+            return None
 
+        # Historical default for GTK in themectl.
+        if normalized == "gtk":
+            return Settings.GTK_CATEGORIES
+
+        return category
+
+    def _get(self, endpoint: str, params: dict[str, Any]) -> dict[str, Any]:
+        params = {**params, "format": "json"}
+        key = self._cache_key(endpoint, params)
+        cached = self.cache.get(key)
         if cached:
             return cached
 
-        response = self.session.get(
-            f"{Settings.OCS_BASE_URL}{endpoint}",
-            params=query,
-            timeout=20,
-        )
+        payload: dict[str, Any] = {}
+        for base_url in (Settings.OCS_BASE_URL, Settings.OCS_FALLBACK_BASE_URL):
+            response = self.session.get(
+                f"{base_url}{endpoint}", params=params, timeout=20
+            )
+            response.raise_for_status()
+            payload = response.json()
+            if self._parse_content(payload):
+                break
 
-        response.raise_for_status()
-
-        payload = response.json()
-
-        self.cache.set(cache_key, payload)
-
+        self.cache.set(key, payload)
         return payload
 
     @staticmethod
     def _parse_content(payload: dict[str, Any]) -> list[dict[str, Any]]:
-        """Extract 'content' list from OCS response."""
-        content = payload.get("ocs", {}).get("data", {}).get("content", [])
+        data = payload.get("ocs", {}).get("data", [])
 
+        if isinstance(data, list):
+            return [item for item in data if isinstance(item, dict)]
+
+        if not isinstance(data, dict):
+            return []
+
+        content = data.get("content", data)
         if isinstance(content, dict):
             return [content]
-
         if isinstance(content, list):
-            return content
-
+            return [item for item in content if isinstance(item, dict)]
         return []
 
     def search(self, query: str, category: str = "gtk") -> list[Theme]:
-        """Search themes."""
-        query_params = {
-            "search": query,
-            "sortmode": "rating",
-            "page": 1,
-            "pagesize": 20,
-            "categories": Settings.GTK_CATEGORIES if category == "gtk" else category,
-        }
-
-        content = self._parse_content(self._get("/content/data", query_params))
-
+        params: dict[str, Any] = {"search": query}
+        normalized_category = self._normalize_category(category)
+        if normalized_category:
+            params["categories"] = normalized_category
+        content = self._parse_content(self._get("/content/data", params))
         return [Theme.from_ocs(item) for item in content]
 
-    def top(self, category: str = "gtk") -> list[Theme]:
-        """Fetch top rated themes."""
-        query_params = {
-            "sortmode": "rating",
-            "page": 1,
-            "pagesize": 20,
-            "categories": Settings.GTK_CATEGORIES if category == "gtk" else category,
-        }
-
-        content = self._parse_content(self._get("/content/data", query_params))
-
+    def top(self, category: str = "all") -> list[Theme]:
+        params: dict[str, Any] = {"sort": "rating"}
+        normalized_category = self._normalize_category(category)
+        if normalized_category:
+            params["categories"] = normalized_category
+        content = self._parse_content(self._get("/content/data", params))
         return [Theme.from_ocs(item) for item in content]
 
-    def trending(self, category: str = "gtk") -> list[Theme]:
-        """Fetch newest/trending themes."""
-        query_params = {
-            "sortmode": "new",
-            "page": 1,
-            "pagesize": 20,
-            "categories": Settings.GTK_CATEGORIES if category == "gtk" else category,
-        }
-
-        content = self._parse_content(self._get("/content/data", query_params))
-
+    def trending(self, category: str = "all") -> list[Theme]:
+        params: dict[str, Any] = {"sort": "new"}
+        normalized_category = self._normalize_category(category)
+        if normalized_category:
+            params["categories"] = normalized_category
+        content = self._parse_content(self._get("/content/data", params))
         return [Theme.from_ocs(item) for item in content]
 
     def details(self, content_id: str) -> Theme | None:
-        """Fetch details for a specific theme."""
         content = self._parse_content(self._get(f"/content/data/{content_id}", {}))
-
-        if not content:
-            return None
-
-        return Theme.from_ocs(content[0])
+        return Theme.from_ocs(content[0]) if content else None
