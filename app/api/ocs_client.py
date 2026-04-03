@@ -39,11 +39,7 @@ class OCSClient:
         if normalized in {"all", "*"}:
             return None
 
-        # Historical default for GTK in themectl.
-        if normalized == "gtk":
-            return Settings.GTK_CATEGORIES
-
-        return category
+        return category.strip()
 
     def _get(self, endpoint: str, params: dict[str, Any]) -> dict[str, Any]:
         params = {**params, "format": "json"}
@@ -108,7 +104,7 @@ class OCSClient:
         *,
         sort: str | None = None,
         query: str | None = None,
-        category: str = "all",
+        category: str | None = None,
         page: int = 1,
         page_size: int = 24,
     ) -> dict[str, Any]:
@@ -134,7 +130,7 @@ class OCSClient:
     def search(
         self,
         query: str,
-        category: str = "gtk",
+        category: str | None = None,
         page: int = 1,
         page_size: int = 24,
     ) -> list[Theme]:
@@ -153,7 +149,7 @@ class OCSClient:
     def search_page(
         self,
         query: str,
-        category: str = "gtk",
+        category: str | None = None,
         page: int = 1,
         page_size: int = 24,
     ) -> dict[str, Any]:
@@ -170,7 +166,7 @@ class OCSClient:
 
     def top(
         self,
-        category: str = "all",
+        category: str | None = None,
         page: int = 1,
         page_size: int = 24,
     ) -> list[Theme]:
@@ -180,7 +176,7 @@ class OCSClient:
 
     def top_page(
         self,
-        category: str = "all",
+        category: str | None = None,
         page: int = 1,
         page_size: int = 24,
     ) -> dict[str, Any]:
@@ -195,7 +191,7 @@ class OCSClient:
 
     def trending(
         self,
-        category: str = "all",
+        category: str | None = None,
         page: int = 1,
         page_size: int = 24,
     ) -> list[Theme]:
@@ -205,7 +201,7 @@ class OCSClient:
 
     def trending_page(
         self,
-        category: str = "all",
+        category: str | None = None,
         page: int = 1,
         page_size: int = 24,
     ) -> dict[str, Any]:
