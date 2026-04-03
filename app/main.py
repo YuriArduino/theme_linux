@@ -8,6 +8,7 @@ from app.utils.config import Settings
 
 
 def create_app() -> FastAPI:
+    """Create and configure the FastAPI application."""
     Settings.ensure_directories()
     app = FastAPI(title="themectl", version=Settings.APP_VERSION)
     app.include_router(router)

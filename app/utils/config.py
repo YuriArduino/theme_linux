@@ -11,7 +11,7 @@ class Settings:
 
     OCS_BASE_URL = "https://api.opendesktop.org/ocs/v1"
     OCS_FALLBACK_BASE_URL = "https://api.pling.com/ocs/v1"
-    GTK_CATEGORIES = "135,167,136"
+    GTK_CATEGORIES = "104,135,167,136"
 
     HOST = "127.0.0.1"
     PORT = 8000
